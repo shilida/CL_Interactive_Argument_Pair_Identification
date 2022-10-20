@@ -1,0 +1,11 @@
+matplotlib==3.5.1
+nlpaug==1.1.10
+numpy==1.19.5
+pandas==1.4.2
+ranger21.egg==info
+scikit_learn==1.1.1
+scipy==1.5.4
+simcse==0.4
+torch==1.8.1+cu101
+tqdm==4.63.1
+transformers==4.18.0
