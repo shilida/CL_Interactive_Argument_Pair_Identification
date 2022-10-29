@@ -14,7 +14,9 @@ The method is implemented using PyTorch.
 ```shell
 python train.py
 ```
-config/parameter.json is the config files. It contains a number of hyperparameters. Hyperparameters can be modified for custom training.
+config/hyparameter.json is the config files. It contains a number of hyperparameters. Hyperparameters can be modified for custom training.  
+noisy: `NO`,`RandomWordAug`,`BackTranslationAug`,`KeyboardAug`  
+objective:`BCE`,`BCE+SCL`
 ## Test a model:
 ```shell
 python test.py

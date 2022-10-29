@@ -111,11 +111,9 @@ def testt():
     torch.backends.cudnn.deterministic = True
     np.random.seed(seed)
     random.seed(seed)
-
     config_file = 'config/hyparameter.json'
     with open(config_file) as fin:
         config = json.load(fin, object_hook=lambda d: SimpleNamespace(**d))
-
     model1 = BertFor2Classification(config)
     model1.cuda()
     state_dict1 = torch.load('model/with_context/model_0.8193604148660328.bin')  # model_0.8193604148660328.bin
@@ -125,7 +123,11 @@ def testt():
     # state_dict2 = torch.load('model/with_context/model_0.7535449020931803.bin')
     # model2.load_state_dict(state_dict2)
     data = Data_WithContext(config=config,max_seq_len=config.max_seq_len,model_type=config.model_type)
-    valid_set = data.load_valid_files(valid_file=config.test_file_path)
+    if config.noisy == 'NO':
+        noisy = False
+    else:
+        noisy = config.noisy
+    valid_set = data.load_valid_files(config.test_file_path,noisy)
     data_loader = {
         'valid': DataLoader(
             valid_set, batch_size=config.batch_size, shuffle=False, num_workers=8, worker_init_fn=_init_fn)}

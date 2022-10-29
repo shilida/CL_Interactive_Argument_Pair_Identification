@@ -4,10 +4,12 @@ from torch.utils.data import TensorDataset
 from transformers import LongformerTokenizer, BertTokenizer
 from tqdm import tqdm
 import pandas as pd
-from ace import cal_sim,Passage
+from ace import cal_sim, Passage
 from transformers import AutoModel, AutoTokenizer
 import nlpaug.augmenter.word as naw
 import nlpaug.augmenter.char as nac
+
+
 class Data_WithContext:
     def __init__(self, config, max_seq_len, model_type):
         self.config = config
@@ -17,28 +19,27 @@ class Data_WithContext:
         self.context_tokenizer = AutoTokenizer.from_pretrained("princeton-nlp/sup-simcse-bert-base-uncased")
         self.context_model = AutoModel.from_pretrained("princeton-nlp/sup-simcse-bert-base-uncased").cuda()
 
-    def load_train_and_dev_files(self, train_file, dev_file):
+    def load_train_and_dev_files(self, train_file, dev_file, noisy=False):
         print('Loading train records for train...')
-        train_set = self.load_file(train_file, 'train')
+        train_set = self.load_file(train_file, 'train', noisy)
         print(len(train_set), 'training records loaded.')
         print('Loading dev records...')
-        dev_set = self.load_file(dev_file, 'dev')
+        dev_set = self.load_file(dev_file, 'dev', noisy)
         print(len(dev_set), 'dev records loaded.')
-        return train_set,dev_set
-    def load_valid_files(self,valid_file,noisy = False):
+        return train_set, dev_set
+
+    def load_valid_files(self, valid_file, noisy=False):
         print('Loading test records...')
-        if noisy:
-            valid_set = self.load_file(valid_file, 'valid',noisy=True)
-        else:
-            valid_set = self.load_file(valid_file, 'valid')
+        valid_set = self.load_file(valid_file, 'valid', noisy)
         print(len(valid_set), 'valid records loaded.')
         return valid_set
 
-    def load_file(self,file_path, name='train') -> TensorDataset:
-        quo_list, reply_list, label_list = self.loaddata(file_path,name,noisy=False)
+    def load_file(self, file_path, name='train', noisy=False) -> TensorDataset:
+        quo_list, reply_list, label_list = self.loaddata(file_path, name, noisy=noisy)
         dataset = self._convert_sentence_pair_to_bert(quo_list, reply_list, label_list)
         return dataset
-    def loaddata(self, filename, name,noisy=False):
+
+    def loaddata(self, filename, name, noisy=False):
         data_frame = pd.read_csv(filename, sep='#', header=None)
         quo_list, reply_list, label_list = [], [], []
         for index, row in tqdm(data_frame.iterrows()):
@@ -48,16 +49,17 @@ class Data_WithContext:
             reply_pos_context = row[3]
             reply_neg = list(row[4::2])
             reply_context_candidates = list(row[5::2])  # 取出从第三个数开始的偶数项
-            if noisy==False:
+            if noisy == False:
                 quo_partcontext = self._selectblock(quo, quo_context)
             else:
-                quo_partcontext = self._selectblock_noisy(quo, quo_context)
+                quo_partcontext = self._selectblock_noisy(quo, quo_context, noisy)
             reply_partcontext_list = []
             # 1个quo1个reply_pos 4个reply_neg
             if noisy == False:
                 reply_pos_partcontext = self._selectblock(reply_pos, reply_pos_context)
             else:
-                reply_pos_partcontext = self._selectblock_noisy(reply_pos, reply_pos_context) # self._selectpartcontext_sim(reply_pos, reply_pos_context,reply_sim_pos)  # random.randint(0,len(reply_context_candidates))  # random.randint(0, len(candidates))  # 随机生成label位置
+                reply_pos_partcontext = self._selectblock_noisy(reply_pos, reply_pos_context,
+                                                                noisy)  # self._selectpartcontext_sim(reply_pos, reply_pos_context,reply_sim_pos)  # random.randint(0,len(reply_context_candidates))  # random.randint(0, len(candidates))  # 随机生成label位置
             reply_partcontext_list.append(reply_pos_partcontext)
             label_list.append(1)
             for i in range(len(reply_context_candidates)):
@@ -70,19 +72,29 @@ class Data_WithContext:
                 label_list.append(0)
             if name == 'train':
                 # pos_reply:neg_reply = 1:2
-                pos_reply_contrast_1 = self._selectblock_pos(reply_pos, reply_pos_context,self.config.pos1_block_size,self.config.pos1_block_num)
-                pos_reply_contrast_2 = self._selectblock_pos(reply_pos, reply_pos_context,self.config.pos2_block_size,self.config.pos2_block_num)
-                pos_reply_contrast_3 = self._selectblock_pos(reply_pos, reply_pos_context, self.config.pos3_block_size,self.config.pos3_block_num)
+                pos_reply_contrast_1 = self._selectblock_pos(reply_pos, reply_pos_context, self.config.pos1_block_size,
+                                                             self.config.pos1_block_num)
+                pos_reply_contrast_2 = self._selectblock_pos(reply_pos, reply_pos_context, self.config.pos2_block_size,
+                                                             self.config.pos2_block_num)
+                pos_reply_contrast_3 = self._selectblock_pos(reply_pos, reply_pos_context, self.config.pos3_block_size,
+                                                             self.config.pos3_block_num)
                 reply_partcontext_list.append(pos_reply_contrast_1)
                 reply_partcontext_list.append(pos_reply_contrast_2)
                 reply_partcontext_list.append(pos_reply_contrast_3)
                 label_list.append(1)
                 label_list.append(1)
                 label_list.append(1)
-                neg_reply_contrast_1 = self._selectblock_neg(reply_neg[0], reply_context_candidates[0],self.config.pos1_block_size,self.config.pos1_block_num)  # self._selectblock_pos(reply_pos, reply_pos_context,self.config.pos1_block_size,self.config.pos1_block_num)
-                neg_reply_contrast_2 = self._selectblock_neg(reply_neg[1], reply_context_candidates[1],self.config.pos2_block_size,self.config.pos2_block_num)  # self._selectblock_pos(reply_pos, reply_pos_context,self.config.pos2_block_size,self.config.pos2_block_num)
-                neg_reply_contrast_3 = self._selectblock_neg(reply_neg[2], reply_context_candidates[2],self.config.pos3_block_size,self.config.pos3_block_num)  # self._selectblock_pos(reply_pos, reply_pos_context, self.config.pos3_block_size,self.config.pos3_block_num)
-                neg_reply_contrast_4 = self._selectblock_neg(reply_neg[3], reply_context_candidates[3], self.config.block_num,self.config.block_size)
+                neg_reply_contrast_1 = self._selectblock_neg(reply_neg[0], reply_context_candidates[0],
+                                                             self.config.pos1_block_size,
+                                                             self.config.pos1_block_num)  # self._selectblock_pos(reply_pos, reply_pos_context,self.config.pos1_block_size,self.config.pos1_block_num)
+                neg_reply_contrast_2 = self._selectblock_neg(reply_neg[1], reply_context_candidates[1],
+                                                             self.config.pos2_block_size,
+                                                             self.config.pos2_block_num)  # self._selectblock_pos(reply_pos, reply_pos_context,self.config.pos2_block_size,self.config.pos2_block_num)
+                neg_reply_contrast_3 = self._selectblock_neg(reply_neg[2], reply_context_candidates[2],
+                                                             self.config.pos3_block_size,
+                                                             self.config.pos3_block_num)  # self._selectblock_pos(reply_pos, reply_pos_context, self.config.pos3_block_size,self.config.pos3_block_num)
+                neg_reply_contrast_4 = self._selectblock_neg(reply_neg[3], reply_context_candidates[3],
+                                                             self.config.block_num, self.config.block_size)
                 reply_partcontext_list.append(neg_reply_contrast_1)
                 reply_partcontext_list.append(neg_reply_contrast_2)
                 reply_partcontext_list.append(neg_reply_contrast_3)
@@ -94,7 +106,8 @@ class Data_WithContext:
             quo_list.append(reply_partcontext_list)
             reply_list.append(quo_partcontext)
         return quo_list, reply_list, label_list
-    def _selectblock_noisy(self, query, context):
+
+    def _selectblock_noisy(self, query, context, noisy):
         passage, cnt = Passage.split_document_into_blocks(self.tokenizer.tokenize(context), self.tokenizer,
                                                           self.config.block_size, 0, hard=False)
         sim_list = []
@@ -111,19 +124,22 @@ class Data_WithContext:
         for part_str in part_list:
             con_str = con_str + part_str
         # different noisy
-        aug_random = naw.RandomWordAug()
-        augmented_text = aug_random.augment(con_str)
-        # aug_backtranlation = naw.BackTranslationAug()
-        # augmented_text = aug_backtranlation.augment(augmented_text)
-        # print('augmented_text_BackTranslationAug', augmented_text)
-        # aug_key = nac.KeyboardAug()
-        # augmented_text = aug_key.augment(augmented_text)
-        # print('augmented_text_KeyboardAug', augmented_text)
-        # aug_backtranlation = naw.BackTranslationAug()
-        # augmented_text = aug_backtranlation.augment(augmented_text)
-        # aug_key = nac.KeyboardAug()
-        # augmented_text = aug_key.augment(con_str)
+        if noisy == 'RandomWordAug':
+            aug_random = naw.RandomWordAug()
+            augmented_text = aug_random.augment(con_str)
+        if noisy == 'BackTranslationAug':
+            aug_backtranlation = naw.BackTranslationAug()
+            augmented_text = aug_backtranlation.augment(con_str)
+            # print('augmented_text_BackTranslationAug', augmented_text)
+        if noisy == 'BackTranslationAug':
+            aug_backtranlation = naw.BackTranslationAug()
+            augmented_text = aug_backtranlation.augment(con_str)
+            # print('augmented_text_BackTranslationAug', augmented_text)
+        if noisy == 'KeyboardAug':
+            aug_key = nac.KeyboardAug()
+            augmented_text = aug_key.augment(con_str)
         return augmented_text
+
     def _selectblock(self, query, context):
         passage, cnt = Passage.split_document_into_blocks(self.tokenizer.tokenize(context), self.tokenizer,
                                                           self.config.block_size, 0, hard=False)
@@ -142,7 +158,8 @@ class Data_WithContext:
         for part_str in part_list:
             con_str = con_str + part_str
         return con_str
-    def _selectblock_pos(self, query, context,pos_block_size,pos_block_num):
+
+    def _selectblock_pos(self, query, context, pos_block_size, pos_block_num):
         passage, cnt = Passage.split_document_into_blocks(self.tokenizer.tokenize(context), self.tokenizer,
                                                           pos_block_size, 0, hard=False)
         sim_list = []
@@ -160,7 +177,8 @@ class Data_WithContext:
         for part_str in part_list:
             con_str = con_str + part_str
         return con_str
-    def _selectblock_neg(self, query, context,pos_block_size,pos_block_num):
+
+    def _selectblock_neg(self, query, context, pos_block_size, pos_block_num):
         passage, cnt = Passage.split_document_into_blocks(self.tokenizer.tokenize(context), self.tokenizer,
                                                           pos_block_size, 0, hard=False)
         sim_list = []
@@ -178,6 +196,7 @@ class Data_WithContext:
         for part_str in part_list:
             con_str = con_str + part_str
         return con_str
+
     def _convert_sentence_pair_to_bert(self, quo_list, reply_list, label_list=None):
         all_input_ids, all_input_mask, all_segment_ids = [], [], []
         for i, _ in tqdm(enumerate(quo_list), ncols=80):
@@ -213,6 +232,8 @@ class Data_WithContext:
         all_label_ids = torch.tensor(label_list, dtype=torch.long)
         return TensorDataset(
             all_input_ids, all_input_mask, all_segment_ids, all_label_ids)
+
+
 class Data_WithoutContext:
     def __init__(self,
                  config,
@@ -223,43 +244,67 @@ class Data_WithoutContext:
         self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
         self.max_seq_len = max_seq_len
 
-    def load_train_and_dev_files(self, train_file, dev_file):
+    def load_train_and_dev_files(self, train_file, dev_file, noisy=False):
         print('Loading train records for train...')
-        train_set = self.load_file(train_file)
+        train_set = self.load_file(train_file, noisy)
         print(len(train_set), 'training records loaded.')
         print('Loading dev records...')
-        dev_set = self.load_file(dev_file)
+        dev_set = self.load_file(dev_file, noisy)
         print(len(dev_set), 'dev records loaded.')
         return train_set, dev_set
 
-    def load_valid_files(self, valid_file):
+    def load_valid_files(self, valid_file, noisy=False):
         print('Loading valid records...')
-        valid_set = self.load_file(valid_file)
+        valid_set = self.load_file(valid_file, noisy)
         print(len(valid_set), 'valid records loaded.')
         return valid_set
 
-    def load_file(self,file_path='train.txt') -> TensorDataset:
-        quo_list, reply_list, label_list = self._load_file(file_path)
+    def load_file(self, file_path='train.txt', noisy=False) -> TensorDataset:
+        quo_list, reply_list, label_list = self._load_file(file_path, noisy)
         dataset = self._convert_sentence_pair_to_bert(
             quo_list, reply_list, label_list)
         return dataset
-    def _load_file(self, filename):
+
+    def _augnoisy(self, text, noisy):
+        if noisy != False:
+            augmented_text = text
+        if noisy == 'RandomWordAug':
+            aug_random = naw.RandomWordAug()
+            augmented_text = aug_random.augment(text)
+        if noisy == 'BackTranslationAug':
+            aug_backtranlation = naw.BackTranslationAug()
+            augmented_text = aug_backtranlation.augment(text)
+            # print('augmented_text_BackTranslationAug', augmented_text)
+        if noisy == 'BackTranslationAug':
+            aug_backtranlation = naw.BackTranslationAug()
+            augmented_text = aug_backtranlation.augment(text)
+            # print('augmented_text_BackTranslationAug', augmented_text)
+        if noisy == 'KeyboardAug':
+            aug_key = nac.KeyboardAug()
+            augmented_text = aug_key.augment(text)
+        return augmented_text
+
+    def _load_file(self, filename, noisy):
         data_frame = pd.read_csv(filename, sep='#', header=None)[:500]
         quo_list, reply_list, label_list = [], [], []
         for index, row in data_frame.iterrows():
             candidates = list(row[4::2])
             quo_tokens = row[1]
+            quo_tokens = self._augnoisy(quo_tokens, noisy)
             reply_label = row[2]
+            reply_label = self._augnoisy(reply_label, noisy)
             reply_list_every_row = []
             reply_list_every_row.append(reply_label)
             label_list.append(1)
             for i in range(len(candidates)):
                 reply_tokens_no_label = candidates[i]
+                reply_tokens_no_label = self._augnoisy(reply_tokens_no_label, noisy)
                 reply_list_every_row.append(reply_tokens_no_label)
                 label_list.append(0)
             reply_list.append(reply_list_every_row)
             quo_list.append(quo_tokens)
         return quo_list, reply_list, label_list
+
     def _convert_sentence_pair_to_bert(self, quo_list, reply_list, label_list=None, ):
         all_input_ids, all_input_mask, all_segment_ids = [], [], []
         for i, _ in tqdm(enumerate(quo_list), ncols=80):

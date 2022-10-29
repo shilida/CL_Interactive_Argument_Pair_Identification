@@ -195,10 +195,11 @@ class Trainer:
                     self.scheduler.step()
                     global_step += 1
                     tqdm_obj.set_description('loss: {:.6f}'.format(loss.item()))
-            results = self._epoch_evaluate()
-            if results[0] > best_dev_acc:
+            dev_acc,dev_mrr = self._epoch_evaluate()
+            print('epoch_{}:dev_acc_{},dev_mrr_{}'.format(epoch,dev_acc,dev_mrr))
+            if dev_acc > best_dev_acc:
                 best_model_state_dict = deepcopy(self.model.state_dict())
-                best_dev_acc = results[0]
+                best_dev_acc = dev_acc
         return best_model_state_dict,best_dev_acc
 def _init_fn(worker_id):
     np.random.seed(int(0))
@@ -212,7 +213,7 @@ def get_path(path):
     if not os.path.exists(path):
         os.makedirs(path)
     return path
-def main_fun(config_file='config/hypararm.json'):
+def main_fun(config_file='config/hyparam.json'):
     """Main method for training.
     Args:
         distributed: if distributed train.
@@ -229,13 +230,13 @@ def main_fun(config_file='config/hypararm.json'):
     random.seed(seed)
     with open(config_file) as fin:
         config = json.load(fin, object_hook=lambda d: SimpleNamespace(**d))
-    get_path(os.path.join(config.model_path, config.model_type))
-    get_path(config.log_path)
+    get_path(os.path.join(config.model_save_path, config.model_type))
     config.block_num = args.block_num
     config.block_size = args.block_size
     config.temp = args.temp
     # wandb.config.update(config)
     # 1. Load data
+    print(">>>>>load data")
     if config.model_type == 'bert_without_context':
         data = Data_WithoutContext(config=config,
                               max_seq_len=config.max_seq_len,
@@ -244,9 +245,13 @@ def main_fun(config_file='config/hypararm.json'):
         data = Data_WithContext(config=config,
                                           max_seq_len=config.max_seq_len,
                                           model_type=config.model_type)  # Data_ContextMultipleChoice
+    if config.noisy == 'NO':
+        noisy = False
+    else:
+        noisy = config.noisy
     train_set, dev_set = data.load_train_and_dev_files(
         train_file=config.train_file_path,
-        dev_file=config.dev_file_path)
+        dev_file=config.dev_file_path,noisy=noisy)
     if torch.cuda.is_available():
         device = torch.device('cuda')
         if args.distributed:
@@ -264,15 +269,18 @@ def main_fun(config_file='config/hypararm.json'):
         'dev': DataLoader(
             dev_set, batch_size=config.batch_size, shuffle=False, num_workers=8, worker_init_fn=_init_fn)}
     # 2. Build model
+    print(">>>>>Build model")
     model = BertFor2Classification(config)
     model.to(device)
     # 3. Train and Save model
+    print(">>>>>Train and Save model")
     trainer = Trainer(model=model, data_loader=data_loader,
                       device=device, config=config, distributed=args.distributed)
     best_model_dev_dict,best_dev_acc = trainer.train()
     # 4. Save model
+    print(">>>>>Save model")
     torch.save(best_model_dev_dict,
-               os.path.join(config.model_path, 'model_{}.bin'.format(best_dev_acc)))
+               os.path.join(config.model_save_path, 'model_{}.bin'.format(best_dev_acc)))
 if __name__ == '__main__':
     # torch.cuda.set_device(1)
     parser = argparse.ArgumentParser()
