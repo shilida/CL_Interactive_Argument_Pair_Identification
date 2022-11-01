@@ -1,5 +1,4 @@
 import torch
-from scipy.spatial.distance import cosine
 from transformers import AutoModel, AutoTokenizer
 import pandas as pd
 from tqdm import tqdm
@@ -65,6 +64,7 @@ def all_sim_sentence(filename, name):
 
 # from hyperParams import BLOCK_SIZE, DEFAULT_MODEL_NAME
 # Refer to https://github.com/lmh0921/keyB/blob/main/genePassage.py
+# from hyperParams import BLOCK_SIZE, DEFAULT_MODEL_NAME
 class Block:
     # tokenizer = BertTokenizer.from_pretrained(DEFAULT_MODEL_NAME)
     # tokenModel =

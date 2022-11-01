@@ -16,7 +16,9 @@ python train.py
 ```
 config/hyparameter.json is the config files. It contains a number of hyperparameters. Hyperparameters can be modified for custom training.  
 noisy: `NO`,`RandomWordAug`,`BackTranslationAug`,`KeyboardAug`  
-objective:`BCE`,`BCE+SCL`
+objective:`BCE`,`BCE+SCL`  
+hard_sample_con:`NO`,`YES`  
+model_type：`bert_without_context`,`bert_with_context`  
 ## Test a model:
 ```shell
 python test.py

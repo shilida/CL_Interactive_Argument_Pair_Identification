@@ -7,7 +7,7 @@
   "pos2_block_size": 32,
   "pos3_block_num": 5,
   "pos3_block_size": 56,
-  "model_type": "bert_without_context",
+  "model_type": "bert_with_context",
   "max_seq_len": 512,
   "model_save_path": "model/with_context/",
   "train_file_path":"/home/shilida/am/emnlp2022/data/new_train.txt",
@@ -24,5 +24,6 @@
   "max_grad_norm": 1,
   "temp": 0.05,
   "noisy": "NO",
+  "hard_sample_con": "NO",
   "objective": "BCE"
 }

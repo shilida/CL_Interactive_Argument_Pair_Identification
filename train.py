@@ -219,7 +219,7 @@ def main_fun(config_file='config/hyparam.json'):
         distributed: if distributed train.
     """
     # 0. Load config and mkdir
-    seed = 0
+    seed = 42
     os.environ['PYTHONHASHSEED'] = str(seed)
     torch.manual_seed(seed)  # 为CPU设置随机种子
     torch.cuda.manual_seed(seed)  # 为当前GPU设置随机种子
@@ -231,9 +231,12 @@ def main_fun(config_file='config/hyparam.json'):
     with open(config_file) as fin:
         config = json.load(fin, object_hook=lambda d: SimpleNamespace(**d))
     get_path(os.path.join(config.model_save_path, config.model_type))
-    config.block_num = args.block_num
-    config.block_size = args.block_size
-    config.temp = args.temp
+    if args.block_num!=0:
+        config.block_num = args.block_num
+    if args.block_size != 0:
+        config.block_size = args.block_size
+    if args.temp != 0:
+        config.temp = args.temp
     # wandb.config.update(config)
     # 1. Load data
     print(">>>>>load data")
@@ -249,9 +252,13 @@ def main_fun(config_file='config/hyparam.json'):
         noisy = False
     else:
         noisy = config.noisy
+    if config.hard_sample_con == 'NO':
+        hard_sample_con = False
+    else:
+        hard_sample_con = True
     train_set, dev_set = data.load_train_and_dev_files(
         train_file=config.train_file_path,
-        dev_file=config.dev_file_path,noisy=noisy)
+        dev_file=config.dev_file_path,hard_sample_con = hard_sample_con,noisy=noisy)
     if torch.cuda.is_available():
         device = torch.device('cuda')
         if args.distributed:
@@ -265,9 +272,9 @@ def main_fun(config_file='config/hyparam.json'):
         sampler_train = RandomSampler(train_set)
     data_loader = {
         'train': DataLoader(
-            train_set, sampler=sampler_train, batch_size=config.batch_size, num_workers=8, worker_init_fn=_init_fn),
+            train_set, sampler=sampler_train, batch_size=config.batch_size, num_workers=16, worker_init_fn=_init_fn),
         'dev': DataLoader(
-            dev_set, batch_size=config.batch_size, shuffle=False, num_workers=8, worker_init_fn=_init_fn)}
+            dev_set, batch_size=config.batch_size, shuffle=False, num_workers=16, worker_init_fn=_init_fn)}
     # 2. Build model
     print(">>>>>Build model")
     model = BertFor2Classification(config)
@@ -284,10 +291,11 @@ def main_fun(config_file='config/hyparam.json'):
 if __name__ == '__main__':
     # torch.cuda.set_device(1)
     parser = argparse.ArgumentParser()
+    # You can also use the parser to adjust hyparameters
     parser.add_argument('--local_rank', default=0, help='used for distributed parallel')
     parser.add_argument("--distributed", action="store_true", help="if distributed train.")
     parser.add_argument("--block_num", type=int, default=0, help="block num")
     parser.add_argument("--block_size", type=int, default=0, help="block size")
-    parser.add_argument("--temp", type=float, default=0.3, help="block size")
+    parser.add_argument("--temp", type=float, default=0, help="block size")
     args = parser.parse_args()
     main_fun()
