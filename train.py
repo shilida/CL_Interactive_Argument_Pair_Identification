@@ -1,6 +1,6 @@
 import json
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = '1'
+os.environ["CUDA_VISIBLE_DEVICES"] = '3'
 from typing import Dict
 import torch
 import argparse
@@ -200,6 +200,7 @@ class Trainer:
             if dev_acc > best_dev_acc:
                 best_model_state_dict = deepcopy(self.model.state_dict())
                 best_dev_acc = dev_acc
+        print("best_dev_acc:",best_dev_acc)
         return best_model_state_dict,best_dev_acc
 def _init_fn(worker_id):
     np.random.seed(int(0))

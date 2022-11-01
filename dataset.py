@@ -94,8 +94,8 @@ class Data_WithContext:
                 label_list.append(0)
                 label_list.append(0)
                 label_list.append(0)
-            quo_list.append(reply_partcontext_list)
-            reply_list.append(quo_partcontext)
+            reply_list.append(reply_partcontext_list)
+            quo_list.append(quo_partcontext)
         return quo_list, reply_list, label_list
 
     def _selectblock(self, query, context, noisy):
