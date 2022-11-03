@@ -23,4 +23,6 @@ model_type：`bert_without_context`,`bert_with_context`
 ```shell
 python test.py
 ```
+## Contact
+shild21@mails.jlu.edu.cn
 ## Citation
