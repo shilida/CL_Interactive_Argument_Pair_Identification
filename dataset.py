@@ -101,16 +101,16 @@ class Data_WithContext:
     def _selectblock(self, query, context, noisy):
         if noisy == 'RandomWordAug':
             aug_random = naw.RandomWordAug()
-            query = aug_random.augment(query)
-            context = aug_random.augment(context)
+            query = aug_random.augment(query)[0]
+            context = aug_random.augment(context)[0]
         if noisy == 'BackTranslationAug':
             aug_backtranlation = naw.BackTranslationAug()
-            query = aug_backtranlation.augment(query)
-            context = aug_backtranlation.augment(context)
+            query = aug_backtranlation.augment(query)[0]
+            context = aug_backtranlation.augment(context)[0]
         if noisy == 'KeyboardAug':
             aug_key = nac.KeyboardAug()
-            query = aug_key.augment(query)
-            context = aug_key.augment(context)
+            query = aug_key.augment(query)[0]
+            context = aug_key.augment(context)[0]
         passage, cnt = Passage.split_document_into_blocks(self.tokenizer.tokenize(context), self.tokenizer,
                                                           self.config.block_size, 0, hard=False)
         sim_list = []
@@ -132,16 +132,16 @@ class Data_WithContext:
     def _selectblock_con(self, query, context, pos_block_size, pos_block_num, noisy):
         if noisy == 'RandomWordAug':
             aug_random = naw.RandomWordAug()
-            query = aug_random.augment(query)
-            context = aug_random.augment(context)
+            query = aug_random.augment(query)[0]
+            context = aug_random.augment(context)[0]
         if noisy == 'BackTranslationAug':
             aug_backtranlation = naw.BackTranslationAug()
-            query = aug_backtranlation.augment(query)
-            context = aug_backtranlation.augment(context)
+            query = aug_backtranlation.augment(query)[0]
+            context = aug_backtranlation.augment(context)[0]
         if noisy == 'KeyboardAug':
             aug_key = nac.KeyboardAug()
-            query = aug_key.augment(query)
-            context = aug_key.augment(context)
+            query = aug_key.augment(query)[0]
+            context = aug_key.augment(context)[0]
         passage, cnt = Passage.split_document_into_blocks(self.tokenizer.tokenize(context), self.tokenizer,
                                                           pos_block_size, 0, hard=False)
         sim_list = []
@@ -233,14 +233,14 @@ class Data_WithoutContext:
             augmented_text = text
         if noisy == 'RandomWordAug':
             aug_random = naw.RandomWordAug()
-            augmented_text = aug_random.augment(text)
+            augmented_text = aug_random.augment(text)[0]
         if noisy == 'BackTranslationAug':
             aug_backtranlation = naw.BackTranslationAug()
-            augmented_text = aug_backtranlation.augment(text)
+            augmented_text = aug_backtranlation.augment(text)[0]
             # print('augmented_text_BackTranslationAug', augmented_text)
         if noisy == 'KeyboardAug':
             aug_key = nac.KeyboardAug()
-            augmented_text = aug_key.augment(text)
+            augmented_text = aug_key.augment(text)[0]
         return augmented_text
 
     def _load_file(self, filename, noisy):

@@ -33,8 +33,7 @@ def evaluate_model(model, data_loader, device) -> List[str]:
         # print(batch)
         with torch.no_grad():
             logits = model(*batch[:-1],train = False)
-        size = logits.shape[0]
-        batch_label = torch.zeros(size)
+        batch_label =  batch[-1].view(-1, 5).argmax(axis=1)#torch.zeros(size)
         label.extend(batch_label)
         outputs = torch.cat([outputs, logits])
     outputs = outputs.cpu()

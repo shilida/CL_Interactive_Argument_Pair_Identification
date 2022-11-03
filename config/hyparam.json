@@ -14,7 +14,8 @@
   "test_file_path":"/home/shilida/am/emnlp2022/data/test.txt",
   "dev_file_path": "/home/shilida/am/emnlp2022/data/dev.txt",
   "num_warmup_steps": 0.05,
-  "batch_size": 40,
+  "batch_size": 25,
+  "eval_batch_size": 25,
   "hidden_size": 768,
   "num_classes": 1,
   "dropout": 0.1,
@@ -25,5 +26,5 @@
   "temp": 0.05,
   "noisy": "NO",
   "hard_sample_con": "NO",
-  "objective": "BCE"
+  "objective": "BCE+SCL"
 }

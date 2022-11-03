@@ -1,6 +1,6 @@
 import json
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = '3'
+os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 from typing import Dict
 import torch
 import argparse
@@ -257,6 +257,7 @@ def main_fun(config_file='config/hyparam.json'):
         hard_sample_con = False
     else:
         hard_sample_con = True
+    assert config.eval_batch_size % 5 ==0, "eval_batch_size must be divisible by 5"
     train_set, dev_set = data.load_train_and_dev_files(
         train_file=config.train_file_path,
         dev_file=config.dev_file_path,hard_sample_con = hard_sample_con,noisy=noisy)
@@ -275,7 +276,7 @@ def main_fun(config_file='config/hyparam.json'):
         'train': DataLoader(
             train_set, sampler=sampler_train, batch_size=config.batch_size, num_workers=16, worker_init_fn=_init_fn),
         'dev': DataLoader(
-            dev_set, batch_size=config.batch_size, shuffle=False, num_workers=16, worker_init_fn=_init_fn)}
+            dev_set, batch_size=config.eval_batch_size, shuffle=False, num_workers=16, worker_init_fn=_init_fn)}
     # 2. Build model
     print(">>>>>Build model")
     model = BertFor2Classification(config)
