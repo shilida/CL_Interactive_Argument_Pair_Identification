@@ -26,3 +26,10 @@ python test.py
 ## Contact
 shild21@mails.jlu.edu.cn
 ## Citation
+@inproceedings{shi2022simple, <br>
+title={A Simple Contrastive Learning Framework for Interactive Argument Pair Identification via Argument-Context Extraction},<br>
+author={Shi, Lida and Giunchiglia, Fausto and Song, Rui and Shi, Daqian and Liu, Tongtong and Diao, Xiaolei and Xu, Hao},<br>
+booktitle={Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing},<br>
+pages={10027--10039},<br>
+year={2022}<br>
+}<br>
